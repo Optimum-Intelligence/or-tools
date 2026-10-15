@@ -109,28 +109,82 @@ public sealed class EmployeeSchedulingSolver
         Dictionary<(string Employee, string Task), BoolVar> assigned,
         ScheduleRequest request)
     {
-        for (var i = 0; i < eligible.Count; i++)
+        if (eligible.Count == 0)
         {
-            for (var j = i + 1; j < eligible.Count; j++)
-            {
-                if (!TaskConstraints.Conflicts(
-                        eligible[i],
-                        eligible[j],
-                        employee.DailyMinWorkingHour,
-                        employee.DailyMaxWorkingHour,
-                        request.MinimumMinutesBetweenTwoTasks,
-                        request.MinimumHoursBetweenWorkPeriods))
-                {
-                    continue;
-                }
+            return;
+        }
 
-                model.AddAtMostOne(new ILiteral[]
+        // Overlap and the minimum gap are one no-overlap constraint. Same-day
+        // span is capped by the daily window, so those pairs are not enumerated.
+        var intervals = new List<IntervalVar>(eligible.Count);
+        foreach (var task in eligible)
+        {
+            var size = WorkingTimeCalculator.MinutesBetween(task.Start, task.End)
+                + request.MinimumMinutesBetweenTwoTasks;
+            intervals.Add(model.NewOptionalFixedSizeIntervalVar(
+                ToMinutes(task.Start),
+                size,
+                assigned[(employee.Name, task.Id)],
+                $"{Safe(employee.Name)}_{Safe(task.Id)}_iv"));
+        }
+
+        model.AddNoOverlap(intervals);
+
+        var byDay = eligible
+            .GroupBy(task => DateOnly.FromDateTime(task.Start))
+            .OrderBy(group => group.Key)
+            .Select(group => (
+                Date: group.Key,
+                Tasks: group.OrderBy(task => task.Start).ThenBy(task => task.Id, StringComparer.Ordinal).ToList()))
+            .ToList();
+
+        for (var day = 0; day < byDay.Count - 1; day++)
+        {
+            if (byDay[day + 1].Date != byDay[day].Date.AddDays(1))
+            {
+                continue;
+            }
+
+            var tomorrow = byDay[day + 1].Tasks;
+            foreach (var earlier in byDay[day].Tasks)
+            {
+                var horizon = CrossDayHorizon(
+                    earlier,
+                    employee.DailyMaxWorkingHour,
+                    request.MinimumHoursBetweenWorkPeriods);
+                foreach (var later in tomorrow)
                 {
-                    assigned[(employee.Name, eligible[i].Id)],
-                    assigned[(employee.Name, eligible[j].Id)],
-                });
+                    if (later.Start >= horizon)
+                    {
+                        break;
+                    }
+
+                    if (!TaskConstraints.Conflicts(
+                            earlier,
+                            later,
+                            employee.DailyMinWorkingHour,
+                            employee.DailyMaxWorkingHour,
+                            request.MinimumMinutesBetweenTwoTasks,
+                            request.MinimumHoursBetweenWorkPeriods))
+                    {
+                        continue;
+                    }
+
+                    model.AddAtMostOne(new ILiteral[]
+                    {
+                        assigned[(employee.Name, earlier.Id)],
+                        assigned[(employee.Name, later.Id)],
+                    });
+                }
             }
         }
+    }
+
+    private static DateTime CrossDayHorizon(TaskDefinition earlier, int dailyMaxHours, int minimumHoursBetweenWorkPeriods)
+    {
+        var periodCutoff = WorkingTimeCalculator.RoundStart(earlier.Start).AddHours(dailyMaxHours);
+        var restCutoff = earlier.End.AddHours(minimumHoursBetweenWorkPeriods);
+        return periodCutoff >= restCutoff ? periodCutoff : restCutoff;
     }
 
     private static void AddDailyWindows(
