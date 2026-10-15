@@ -64,3 +64,15 @@ export_meta/
 # Editor directories and files
 *.user
 *.swp
+
+# Scheduling API image only needs that project.
+ortools/
+examples/
+bazel/
+cmake/
+patches/
+makefiles/
+tools/
+.allstar/
+employee-scheduling-api/bin/
+employee-scheduling-api/obj/
