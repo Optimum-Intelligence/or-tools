@@ -1,0 +1,50 @@
+{
+  "timeLimitSeconds": 10,
+  "minimumMinutesBetweenTwoTasks": 15,
+  "minimumHoursBetweenWorkPeriods": 11,
+  "minimizeEmployeesWeight": 50,
+  "idleTimeWeight": 1,
+  "employees": [
+    {
+      "name": "Ana",
+      "skills": ["GATE"],
+      "unavailable": [],
+      "dailyMinWorkingHour": 4,
+      "dailyMaxWorkingHour": 12
+    },
+    {
+      "name": "Ben",
+      "skills": ["GATE"],
+      "unavailable": [],
+      "dailyMinWorkingHour": 4,
+      "dailyMaxWorkingHour": 12
+    }
+  ],
+  "flights": [
+    {
+      "id": "20260608_AF100",
+      "start": "2026-06-08T08:00:00",
+      "end": "2026-06-08T09:00:00",
+      "requiredEmployees": [
+        { "skills": ["GATE"], "numberOfEmployees": 2 }
+      ]
+    },
+    {
+      "id": "20260608_AF200",
+      "start": "2026-06-08T09:30:00",
+      "end": "2026-06-08T10:30:00",
+      "requiredEmployees": [
+        { "skills": ["GATE"], "numberOfEmployees": 1 }
+      ]
+    },
+    {
+      "id": "20260608_AF300",
+      "start": "2026-06-08T11:00:00",
+      "end": "2026-06-08T12:00:00",
+      "requiredEmployees": [
+        { "skills": ["GATE"], "numberOfEmployees": 1 }
+      ]
+    }
+  ],
+  "fixedAssignments": []
+}
